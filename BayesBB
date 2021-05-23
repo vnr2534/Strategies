@@ -303,14 +303,14 @@ def handler_main(state, data, amount):
             # state.price_change[symbol] = (float(current_price) / float(position.average_price)) * 100
             if  current_price <= float(position.entry_price) - (float(position.entry_price) * sl):
                 close_position(symbol)
-                print("POSITION TO 0.01 [eachN] {} {}@{}".format(symbol, balance_base, current_price))
+                print("STOP LOSS hit {} {}@{}".format(symbol, balance_base, current_price))
                 state.tp_newposition[symbol] = False
                 state.tp_position[symbol] = 0
                 
 
             if  not state.tp_newposition[symbol]:
                 if current_price >= float(position.entry_price) + (float(position.entry_price) * tp):
-                    print(f"TAKE PROFIT [symbol] - POSITION CHANGE Initiated")
+                    print("TAKE PROFIT - POSITION CHANGE Initiated {} {}@{}".format(symbol, balance_base, current_price))
                     state.tp_newposition[symbol] = True
                     state.tp_position[symbol] = current_price
 
@@ -318,12 +318,12 @@ def handler_main(state, data, amount):
             
             elif state.tp_newposition[symbol]:
                 if current_price >= float(state.tp_position[symbol]) + (float(position.entry_price) * 0.01):
-                    print(f"TAKE PROFIT [symbol] - POSITION CHANGE STAGE 2 - DYNAMIC Every +0.55%]")
+                    print("TAKE PROFIT - POSITION CHANGE STAGE 2 {} {}@{}".format(symbol, balance_base, current_price))
                     state.tp_position[symbol] = current_price               
                     
     # // DYNAMIC SL - Stop Loss for Position Change -0.045%
                 elif current_price <= float(state.tp_position[symbol]) - (float(position.entry_price) * 0.01) and price_diff > 0:
-                    print(f"TAKE PROFIT [symbol] - After Position Change Initiated")
+                    print("TAKE PROFIT - After Position Change Initiated {} {}@{}".format(symbol, balance_base, current_price))
                     close_position(symbol) 
                     state.tp_newposition[symbol] = False
                     state.tp_position[symbol] = 0
