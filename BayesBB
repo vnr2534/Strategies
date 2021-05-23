@@ -83,7 +83,7 @@ def initialize(state):
     state.has_position = {'ETHUSDT' : False, 'BNBUSDT' : False, 'ADAUSDT' : False, "LINKUSDT" : False, "DOTUSDT" : False}  
     state.current_price = {'ETHUSDT' : 0, 'BNBUSDT' : 0, 'ADAUSDT' : 0, "LINKUSDT" : 0, "DOTUSDT" : 0} 
     state.params["DEFAULT"] = {
-        "stop_loss": 0.10,
+        "stop_loss": 0.035,
         "take_profit": 0.08,
         "lower_threshold": 5,
         "bayes_period": 10,
@@ -116,6 +116,10 @@ def handler(state, data):
 
             if position is not None:
                 n_pos += 1
+                # state.unrealized_pnl[this_symbol] = float(position.unrealized_pnl)
+                # state.weight[this_symbol] = float(query_position_weight(this_symbol))
+                # state.pnl[this_symbol] = w_unreal_pnl(state.unrealized_pnl[this_symbol], state.weight[this_symbol]) 
+                # state.has_position[this_symbol] = has_open_position(this_symbol, include_dust=False)
         amount = float(balance_quoted) * state.percent_invest
         if n_pos < n_coins:
             amount = buy_value / (n_coins - n_pos)
@@ -124,6 +128,25 @@ def handler(state, data):
 
     except TypeError:
         handler_main(state, data, buy_value)
+
+    # max_unreal = maximum(state.pnl) 
+
+    # print(max_unreal)
+    # print(state.pnl)
+    
+    # for eachN, value in state.pnl.items():
+    #     if value != max_unreal[0] and state.has_position[eachN] and state.weight[eachN] > 0.25:
+    #         adjust_position(symbol=eachN, weight=0.01)
+    #         print("POSITION TO 0.01 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
+
+    #     elif value == max_unreal[0] and value < 0 and state.has_position[eachN] and state.weight[eachN] > 0.25:
+    #         adjust_position(symbol=eachN,weight=0.01)
+    #         print("MAX POSITION TO 0.01 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
+
+    #     elif value == max_unreal[0] and value > 5 and state.has_position[eachN] and state.weight[eachN] < 0.25:
+    #         adjust_position(symbol=eachN,weight=0.75)
+    #         print("MAX POSITION TO 0.95 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
+
 
     if state.number_offset_trades < portfolio.number_of_offsetting_trades:
         
