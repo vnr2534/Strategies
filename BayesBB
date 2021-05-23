@@ -80,8 +80,6 @@ def initialize(state):
     state.weight = {}
     state.tp_newposition =  {'ETHUSDT' : False, 'BNBUSDT' : False, 'ADAUSDT' : False, "LINKUSDT" : False, "DOTUSDT" : False}
     state.tp_position =   {'ETHUSDT' : 0, 'BNBUSDT' : 0, 'ADAUSDT' : 0, "LINKUSDT" : 0, "DOTUSDT" : 0}
-    state.has_position = {'ETHUSDT' : False, 'BNBUSDT' : False, 'ADAUSDT' : False, "LINKUSDT" : False, "DOTUSDT" : False}  
-    state.current_price = {'ETHUSDT' : 0, 'BNBUSDT' : 0, 'ADAUSDT' : 0, "LINKUSDT" : 0, "DOTUSDT" : 0} 
     state.params["DEFAULT"] = {
         "stop_loss": 0.035,
         "take_profit": 0.08,
@@ -116,37 +114,13 @@ def handler(state, data):
 
             if position is not None:
                 n_pos += 1
-                # state.unrealized_pnl[this_symbol] = float(position.unrealized_pnl)
-                # state.weight[this_symbol] = float(query_position_weight(this_symbol))
-                # state.pnl[this_symbol] = w_unreal_pnl(state.unrealized_pnl[this_symbol], state.weight[this_symbol]) 
-                # state.has_position[this_symbol] = has_open_position(this_symbol, include_dust=False)
         amount = float(balance_quoted) * state.percent_invest
         if n_pos < n_coins:
             amount = buy_value / (n_coins - n_pos)
         for this_symbol in data.keys():
             handler_main(state, data[this_symbol], amount)
-
     except TypeError:
         handler_main(state, data, buy_value)
-
-    # max_unreal = maximum(state.pnl) 
-
-    # print(max_unreal)
-    # print(state.pnl)
-    
-    # for eachN, value in state.pnl.items():
-    #     if value != max_unreal[0] and state.has_position[eachN] and state.weight[eachN] > 0.25:
-    #         adjust_position(symbol=eachN, weight=0.01)
-    #         print("POSITION TO 0.01 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
-
-    #     elif value == max_unreal[0] and value < 0 and state.has_position[eachN] and state.weight[eachN] > 0.25:
-    #         adjust_position(symbol=eachN,weight=0.01)
-    #         print("MAX POSITION TO 0.01 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
-
-    #     elif value == max_unreal[0] and value > 5 and state.has_position[eachN] and state.weight[eachN] < 0.25:
-    #         adjust_position(symbol=eachN,weight=0.75)
-    #         print("MAX POSITION TO 0.95 [eachN] {} {}@{}".format(eachN, balance_quoted, state.current_price[eachN]))
-
 
     if state.number_offset_trades < portfolio.number_of_offsetting_trades:
         
@@ -234,12 +208,7 @@ def handler_main(state, data, amount):
     if bbands is None:
         return
 
-    stoch  = data.stoch(21, 7, 7)
-    atr = data.atr(14)
-    adx = data.adx(14)
-
     current_price = data.close_last
-    state.current_price[symbol] = data.close_last
     bb_res = bbbayes(
         data.close.select('close'), bayes_period,
         bbands.select('bbands_upper'), bbands.select('bbands_lower'),
@@ -297,36 +266,39 @@ def handler_main(state, data, amount):
         data.symbol, include_dust=False)
     has_position = position is not None
 
+
+    # // DYNAMIC STOP LOSS and TAKE PROFIT
     def dynamic_tp_sl(tp, sl): 
         if has_position:
             price_diff = 100 - ((float(position.entry_price) / float(current_price)) * 100)
-            # state.price_change[symbol] = (float(current_price) / float(position.average_price)) * 100
+
+    # // DYNAMIC SL - Stage 1 Execute STOP LOSS at ..% Price Change
             if  current_price <= float(position.entry_price) - (float(position.entry_price) * sl):
                 close_position(symbol)
                 print("STOP LOSS hit {} {}@{}".format(symbol, balance_base, current_price))
                 state.tp_newposition[symbol] = False
                 state.tp_position[symbol] = 0
                 
-
+    # // DYNAMIC TP - Stage 1 Initiate TAKE PROFIT Dynamic at ..% Price Change
             if  not state.tp_newposition[symbol]:
                 if current_price >= float(position.entry_price) + (float(position.entry_price) * tp):
                     print("TAKE PROFIT - POSITION CHANGE Initiated {} {}@{}".format(symbol, balance_base, current_price))
                     state.tp_newposition[symbol] = True
                     state.tp_position[symbol] = current_price
 
-    # // DYNAMIC TP - Stage 2 Every 0.15% And Dynamic STOP LOSS Section
-            
+    # // DYNAMIC TP - Stage 2 Every 1% And Dynamic TAKE PROFIT Section
             elif state.tp_newposition[symbol]:
                 if current_price >= float(state.tp_position[symbol]) + (float(position.entry_price) * 0.01):
                     print("TAKE PROFIT - POSITION CHANGE STAGE 2 {} {}@{}".format(symbol, balance_base, current_price))
                     state.tp_position[symbol] = current_price               
                     
-    # // DYNAMIC SL - Stop Loss for Position Change -0.045%
+    # // DYNAMIC TP - TAKE PROFIT for Position Change -1%
                 elif current_price <= float(state.tp_position[symbol]) - (float(position.entry_price) * 0.01) and price_diff > 0:
                     print("TAKE PROFIT - After Position Change Initiated {} {}@{}".format(symbol, balance_base, current_price))
                     close_position(symbol) 
                     state.tp_newposition[symbol] = False
                     state.tp_position[symbol] = 0
+
 
     if signal is not None:
         if signal == "buy":
